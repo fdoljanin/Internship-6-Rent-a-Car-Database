@@ -1,3 +1,5 @@
+use something drop database rentacar 
+
 CREATE DATABASE RentACar
 --
 USE RentACar
@@ -23,7 +25,7 @@ CREATE TABLE Vehicles(
 	Model varchar(100) NOT NULL,
 	Type varchar(100) NOT NULL,
 	Color varchar(30) NOT NULL,
-	PriceClass int FOREIGN KEY REFERENCES PriceClasses(PriceClassId) NOT NULL,
+	PriceClassId int FOREIGN KEY REFERENCES PriceClasses(PriceClassId) NOT NULL,
 	Mileage int CHECK(Mileage>=0),
 	LastRegistration datetime2
 )
@@ -33,6 +35,19 @@ CREATE TABLE Registrations(
 	VehicleId int FOREIGN KEY REFERENCES Vehicles(VehicleId) NOT NULL,
 	RegisterDate datetime2 NOT NULL,
 )
+
+
+GO
+CREATE TRIGGER UpdateRegistrations
+ON Registrations
+AFTER INSERT
+AS
+BEGIN 
+UPDATE Vehicles 
+SET Vehicles.LastRegistration = (SELECT MAX(RegisterDate) FROM inserted WHERE inserted.VehicleId = Vehicles.VehicleId)
+WHERE (SELECT MAX(RegisterDate) FROM inserted WHERE inserted.VehicleId = Vehicles.VehicleId) > Vehicles.LastRegistration 
+OR Vehicles.LastRegistration IS NULL
+END
 
 CREATE TABLE Rents(
 	RentId int IDENTITY(1,1) PRIMARY KEY,
@@ -88,6 +103,7 @@ INSERT INTO Vehicles(Brand, Model, Type, Color, PriceClass, Mileage) VALUES
 ('Piaggio', 'Typhoon', 'Scooter', 'Black', (SELECT PriceClassId FROM PriceClasses WHERE ClassName = 'Moped'), 1246),
 ('Citroen', 'Berlingo', 'Van', 'Black', (SELECT PriceClassId FROM PriceClasses WHERE ClassName = 'Combi'), 8246);
 
+
 INSERT INTO Registrations(VehicleId, RegisterDate) VALUES
 (1, '2016-5-12'),
 (1, '2017-5-13'),
@@ -119,7 +135,7 @@ INSERT INTO Registrations(VehicleId, RegisterDate) VALUES
 (18, '2019-5-3'),
 (19, '2018-3-4'),
 (19, '2019-2-5'),
-(19, '2020-2-7'),
+(19, '2020-1-7'),
 (20, '2020-5-4');
 
 INSERT INTO Rents (VehicleId, EmployeeId, CustomerFirstName, CustomerLastName, CustomerPin, CustomerBirth, CustomerLicense, CustomerCreditCard, TransactionDate, StartTime, EndTime) VALUES
@@ -133,3 +149,62 @@ INSERT INTO Rents (VehicleId, EmployeeId, CustomerFirstName, CustomerLastName, C
 (5,2,'Benjamin','Johnson','07649446464','1959-12-2','41895417', '1811791766412913', '2020-2-26', '2020-2-27 10:00', '2020-3-1 19:00'),
 (4,3,'Anne','Garcia','07649446464','1991-8-23','36218490', '4124471951492068', '2020-10-28', '2020-10-29 18:00', '2020-10-30 10:00'),
 (3,1,'Tina','Long','07649446464','1989-11-26','66132530', '8785793173508860', '2020-12-21', '2020-12-24 15:00', '2021-1-2 19:00');
+
+SELECT * FROM Vehicles WHERE (DATEDIFF(yy, LastRegistration, GETDATE())>0);
+
+SELECT * FROM Vehicles WHERE LastRegistration BETWEEN DATEADD(YEAR,-1, GETDATE()) AND DATEADD(MONTH,-11,GETDATE());
+
+SELECT Type, COUNT(VehicleId) AS NumberOfVehicles FROM Vehicles
+GROUP BY Type
+ORDER BY NumberOfVehicles
+
+SELECT TOP(5) emp.FirstName, emp.LastName, rts.* FROM Rents rts
+INNER JOIN Employees emp ON emp.EmployeeId = rts.EmployeeId
+WHERE rts.EmployeeId = 2
+ORDER BY TransactionDate DESC
+
+
+GO
+CREATE FUNCTION GetPrice(@StartTime as datetime2, @EndTime as datetime2, @SummerPrice as int, @WinterPrice as int) --this turned super messy, I will use loop or smth later
+RETURNS int
+AS
+BEGIN
+DECLARE @StartTimeBack datetime = DATEADD(dd, -DATEPART(dayofyear, '2018-2-28'), @StartTime); 
+DECLARE @EndTimeBack datetime = DATEADD(dd, -DATEPART(dayofyear, '2018-2-28'), @EndTime);
+DECLARE @WinterStart datetime2 = DATEADD(dd, -DATEPART(dayofyear, '2018-2-28'), '2018-10-1');
+DECLARE @StartDay int = DATEPART(dayofyear, @StartTime);
+DECLARE @EndDay int = DATEPART(dayofyear, @EndTime);
+DECLARE @SwitchDay int = DATEPART(dayofyear, @WinterStart);
+DECLARE @WinterDays int = 0;
+DECLARE @SummerDays int = 0;
+DECLARE @Price int = 0;
+DECLARE @Swapped BIT = 0;
+IF (@StartDay>@EndDay)
+BEGIN
+	DECLARE @Temp int = @StartDay;
+    SET @StartDay = @EndDay;
+	SET @EndDay = @Temp;
+	SET @Swapped = 1;
+END 
+IF @SwitchDay BETWEEN @StartDay AND @EndDay
+	BEGIN
+	SET @SummerDays =  @SwitchDay - @StartDay;
+	SET @WinterDays = @EndDay - @SwitchDay;
+	END
+ELSE IF @StartDay <= @SwitchDay
+	BEGIN
+	SET @SummerDays = @EndDay - @StartDay;
+	END
+ELSE
+	BEGIN
+	SET @WinterDays = @EndDay-@StartDay;
+	END
+IF @Swapped=1
+SET @Price = @SwitchDay * @SummerPrice + (365 - @SwitchDay)*@WinterPrice - @SummerDays * @SummerPrice - @WinterDays*@WinterPrice;
+ELSE
+SET @Price = @WinterDays*@WinterPrice + @SummerDays*@SummerPrice;
+
+RETURN @Price;
+END
+
+GO
