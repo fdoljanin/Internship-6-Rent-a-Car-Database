@@ -1,6 +1,6 @@
-CREATE DATABASE RentACar
+CREATE DATABASE RentACar;
 --
-USE RentACar
+USE RentACar;
 
 CREATE TABLE Employees(
 	EmployeeId int IDENTITY(1,1) PRIMARY KEY,
@@ -8,14 +8,14 @@ CREATE TABLE Employees(
 	LastName varchar(100) NOT NULL,
 	Pin varchar(11) CHECK(ISNUMERIC(Pin)=1) UNIQUE,
 	Salary int CHECK(Salary>0)
-)
+);
 
 CREATE TABLE PriceClasses(
 	PriceClassId int IDENTITY(1,1) PRIMARY KEY,
 	ClassName varchar(100) NOT NULL UNIQUE,
 	WinterPrice int CHECK(WinterPrice>0) NOT NULL,
 	SummerPrice int CHECK(SummerPrice>0) NOT NULL
-)
+);
 
 CREATE TABLE Vehicles(
 	VehicleId int IDENTITY(1,1) PRIMARY KEY,
@@ -26,13 +26,13 @@ CREATE TABLE Vehicles(
 	PriceClassId int FOREIGN KEY REFERENCES PriceClasses(PriceClassId) NOT NULL,
 	Mileage int CHECK(Mileage>=0),
 	LastRegistration datetime2
-)
+);
 
 CREATE TABLE Registrations(
 	RegistrationId int IDENTITY(1,1) NOT NULL,
 	VehicleId int FOREIGN KEY REFERENCES Vehicles(VehicleId) NOT NULL,
 	RegisterDate datetime2 NOT NULL,
-)
+);
 
 
 GO
@@ -41,14 +41,12 @@ ON Registrations
 AFTER INSERT
 AS
 BEGIN 
-UPDATE Vehicles 
-SET Vehicles.LastRegistration = (SELECT MAX(RegisterDate) FROM inserted WHERE inserted.VehicleId = Vehicles.VehicleId)
-WHERE (SELECT MAX(RegisterDate) FROM inserted WHERE inserted.VehicleId = Vehicles.VehicleId) > Vehicles.LastRegistration 
-OR Vehicles.LastRegistration IS NULL
-END
+	UPDATE Vehicles 
+	SET Vehicles.LastRegistration = (SELECT MAX(RegisterDate) FROM inserted WHERE inserted.VehicleId = Vehicles.VehicleId)
+END;
 
 
-CREATE TABLE Rents(
+CREATE TABLE RentPurchases(
 	RentId int IDENTITY(1,1) PRIMARY KEY,
 	VehicleId int FOREIGN KEY REFERENCES Vehicles(VehicleId) NOT NULL,
 	EmployeeId int FOREIGN KEY REFERENCES Employees(EmployeeId) NOT NULL,
@@ -60,8 +58,30 @@ CREATE TABLE Rents(
 	CustomerCreditCard varchar(16) CHECK(ISNUMERIC(CustomerCreditCard)=1) NOT NULL,
 	TransactionDate datetime2 NOT NULL,
 	StartTime datetime2 NOT NULL,
-	EndTime datetime2 NOT NULL
-)
+	Duration float(1) NOT NULL CHECK(Duration>=1)
+);
+
+
+CREATE FUNCTION  GetPrice(@StartTime as datetime2, @Duration as float, @SummerPrice as int, @WinterPrice as int)
+RETURNS int
+AS
+BEGIN
+	DECLARE @Price int = 0;
+	WHILE @Duration>0
+	BEGIN
+		IF 32*MONTH(@StartTime) + DAY(@StartTime) BETWEEN 32*3+1 AND 32*10+1
+		BEGIN
+			SET @Price += 0.5*@SummerPrice;
+		END
+		ELSE 
+		BEGIN
+			SET @Price += 0.5*@WinterPrice;
+		END
+		SET @StartTime = DATEADD(hh, 12, @StartTime);
+		SET @Duration-=0.5;
+	END
+RETURN @Price
+END;
 
 INSERT INTO Employees(FirstName, LastName, Pin, Salary) VALUES
 ('Ann', 'Cooper', '16633000209', 6260),
@@ -137,17 +157,17 @@ INSERT INTO Registrations(VehicleId, RegisterDate) VALUES
 (19, '2020-1-7'),
 (20, '2020-5-4');
 
-INSERT INTO Rents (VehicleId, EmployeeId, CustomerFirstName, CustomerLastName, CustomerPin, CustomerBirth, CustomerLicense, CustomerCreditCard, TransactionDate, StartTime, EndTime) VALUES
-(5,2,'Richard','Wilson','07649446464','1977-5-4','48066710', '8148489434405333', '2018-4-3', '2018-4-5 18:00', '2018-4-6 17:00'),
-(1,5,'Aaron','Howard','56558445316','1988-1-8','46548109', '3099910042133648', '2018-5-3', '2018-5-7 12:00', '2018-5-10 22:30'),
-(6,7,'Kathy','Ross','06741541992','1954-10-14','99042478', '1926352340788839', '2018-5-6', '2018-5-7 13:00', '2018-5-11 14:00'),
-(5,3,'Fred','Bell','45432684014','1992-9-1','94966688', '8372851956355999', '2018-9-30', '2018-9-30 10:00', '2018-10-2 22:00'),
-(10,4,'Yudy Young','Wilson','46216788481','2001-2-28','54486082', '6827049039478492', '2019-2-27', '2019-2-28 18:00', '2019-3-2 18:00'),
-(17,5,'Timothy','Hughes','48718974899','1995-8-5','80459874', '0465091344030874', '2019-8-1', '2019-8-5 14:00', '2019-8-5 21:00'),
-(18,6,'Jeremy','Smith','38333296479','1985-4-19','20763908', '3957665602652717', '2020-1-1', '2020-1-2 9:00', '2020-1-3 10:00'),
-(5,2,'Benjamin','Johnson','49258947076','1959-12-2','41895417', '1811791766412913', '2020-2-26', '2020-2-27 10:00', '2020-3-1 19:00'),
-(4,3,'Anne','Garcia','35710815006','1991-8-23','36218490', '4124471951492068', '2020-10-28', '2020-10-29 18:00', '2020-10-30 10:00'),
-(3,1,'Tina','Long','81027056810','1989-11-26','66132530', '8785793173508860', '2020-12-21', '2020-12-24 15:00', '2021-1-2 19:00');
+INSERT INTO RentPurchases (VehicleId, EmployeeId, CustomerFirstName, CustomerLastName, CustomerPin, CustomerBirth, CustomerLicense, CustomerCreditCard, TransactionDate, StartTime, Duration) VALUES
+(5,2,'Richard','Wilson','07649446464','1977-5-4','48066710', '8148489434405333', '2018-4-3', '2018-4-5 18:00', 1.5),
+(1,5,'Aaron','Howard','56558445316','1988-1-8','46548109', '3099910042133648', '2018-5-3', '2018-5-7 12:00', 2.5),
+(6,7,'Kathy','Ross','06741541992','1954-10-14','99042478', '1926352340788839', '2018-5-6', '2018-5-7 13:00', 1),
+(5,3,'Fred','Bell','45432684014','1992-9-1','94966688', '8372851956355999', '2018-9-30', '2018-9-30 10:00', 4),
+(10,4,'Yudy Young','Wilson','46216788481','2001-2-28','54486082', '6827049039478492', '2019-2-27', '2019-2-28 18:00', 22),
+(17,5,'Timothy','Hughes','48718974899','1995-8-5','80459874', '0465091344030874', '2019-8-1', '2019-8-5 14:00', 1023),
+(18,6,'Jeremy','Smith','38333296479','1985-4-19','20763908', '3957665602652717', '2020-1-1', '2020-1-2 9:00', 1.5),
+(5,2,'Benjamin','Johnson','49258947076','1959-12-2','41895417', '1811791766412913', '2020-2-26', '2020-2-27 10:00', 4),
+(4,3,'Anne','Garcia','35710815006','1991-8-23','36218490', '4124471951492068', '2020-10-28', '2020-10-29 18:00', 3),
+(3,1,'Tina','Long','81027056810','1989-11-26','66132530', '8785793173508860', '2020-12-21', '2020-12-24 15:00', 10);
 
 SELECT * FROM Vehicles WHERE (DATEDIFF(yy, LastRegistration, GETDATE())>0);
 
@@ -155,100 +175,54 @@ SELECT * FROM Vehicles WHERE LastRegistration BETWEEN DATEADD(YEAR,-1, GETDATE()
 
 SELECT Type, COUNT(VehicleId) AS NumberOfVehicles FROM Vehicles
 GROUP BY Type
-ORDER BY NumberOfVehicles
+ORDER BY NumberOfVehicles;
 
-SELECT TOP(5) emp.FirstName, emp.LastName, rts.* FROM Rents rts
+SELECT TOP(5) emp.FirstName, emp.LastName, rts.* FROM RentPurchases rts
 INNER JOIN Employees emp ON emp.EmployeeId = rts.EmployeeId
 WHERE rts.EmployeeId = 2
-ORDER BY TransactionDate DESC
+ORDER BY TransactionDate DESC;
 
-
-GO
-CREATE FUNCTION GetPrice(@StartTime as datetime2, @EndTime as datetime2, @SummerPrice as int, @WinterPrice as int) --this turned super messy, I will use loop or smth later
-RETURNS int
-AS
-BEGIN
-DECLARE @StartTimeBack datetime = DATEADD(dd, -DATEPART(dayofyear, '2018-2-28'), @StartTime); 
-DECLARE @EndTimeBack datetime = DATEADD(dd, -DATEPART(dayofyear, '2018-2-28'), @EndTime);
-DECLARE @WinterStart datetime2 = DATEADD(dd, -DATEPART(dayofyear, '2018-2-28'), '2018-10-1');
-DECLARE @StartDay int = DATEPART(dayofyear, @StartTimeBack);
-DECLARE @EndDay int = DATEPART(dayofyear, @EndTimeBack);
-DECLARE @SwitchDay int = DATEPART(dayofyear, @WinterStart);
-DECLARE @WinterDays int = 0;
-DECLARE @SummerDays int = 0;
-DECLARE @Price int = 0;
-DECLARE @Swapped BIT = 0;
-IF (@StartDay>@EndDay)
-BEGIN
-	DECLARE @Temp int = @StartDay;
-    SET @StartDay = @EndDay;
-	SET @EndDay = @Temp;
-	SET @Swapped = 1;
-END 
-IF @SwitchDay BETWEEN @StartDay AND @EndDay
-	BEGIN
-	SET @SummerDays =  @SwitchDay - @StartDay;
-	SET @WinterDays = @EndDay - @SwitchDay;
-	END
-ELSE IF @StartDay <= @SwitchDay
-	BEGIN
-	SET @SummerDays = @EndDay - @StartDay;
-	END
-ELSE
-	BEGIN
-	SET @WinterDays = @EndDay-@StartDay;
-	END
-IF @Swapped=1
-SET @Price = @SwitchDay * @SummerPrice + (365 - @SwitchDay)*@WinterPrice - @SummerDays * @SummerPrice - @WinterDays*@WinterPrice;
-ELSE
-SET @Price = @WinterDays*@WinterPrice + @SummerDays*@SummerPrice;
-RETURN @Price;
-END
-
-GO
-
-SELECT Rents.StartTime, Rents.EndTime, PriceClasses.SummerPrice, PriceClasses.WinterPrice,
-[dbo].GetPrice(Rents.StartTime, Rents.EndTime, PriceClasses.SummerPrice, PriceClasses.WinterPrice) AS Price 
-FROM Rents
-JOIN Vehicles ON Rents.VehicleId = Vehicles.VehicleId
+SELECT RentPurchases.StartTime, RentPurchases.Duration, PriceClasses.SummerPrice, PriceClasses.WinterPrice,
+[dbo].GetPrice(RentPurchases.StartTime, RentPurchases.Duration, PriceClasses.SummerPrice, PriceClasses.WinterPrice) AS Price 
+FROM RentPurchases
+JOIN Vehicles ON RentPurchases.VehicleId = Vehicles.VehicleId
 JOIN PriceClasses ON PriceClasses.PriceClassId = Vehicles.PriceClassId
-WHERE Rents.RentId = 3
-
-SELECT * FROM Rents 
+WHERE RentPurchases.RentId = 3;
 
 SELECT MIN(CustomerFirstName) AS FirstName, MIN(CustomerLastName) AS LastName, MIN(CustomerBirth) AS Birth,
-MIN(CustomerPin) AS Pin, MIN(CustomerLicense) AS License, MIN(CustomerCreditCard) AS CreditCard  FROM Rents
+MIN(CustomerPin) AS Pin, MIN(CustomerLicense) AS License, MIN(CustomerCreditCard) AS CreditCard  FROM RentPurchases
 GROUP BY CustomerPin;
 
-SELECT MIN(FirstName) AS FirstName, MIN(LastName) AS LastName, MAX(TransactionDate) AS LastTransaction FROM Rents
-JOIN Employees ON Rents.EmployeeId = Employees.EmployeeId
-GROUP BY Rents.EmployeeId;
+SELECT MIN(FirstName) AS FirstName, MIN(LastName) AS LastName, MAX(TransactionDate) AS LastTransaction FROM RentPurchases
+JOIN Employees ON RentPurchases.EmployeeId = Employees.EmployeeId
+GROUP BY RentPurchases.EmployeeId;
 
 SELECT MIN(Brand) AS Brand, COUNT(VehicleId) AS NumberOfVehicles FROM Vehicles 
 GROUP BY Brand 
 ORDER BY NumberOfVehicles;
 
-SELECT Rents.*,
-[dbo].GetPrice(Rents.StartTime, Rents.EndTime, PriceClasses.SummerPrice, PriceClasses.WinterPrice) AS Price
-INTO RentsArchive
-FROM Rents
-JOIN Vehicles ON Rents.VehicleId = Vehicles.VehicleId
+SELECT RentPurchases.*,
+[dbo].GetPrice(RentPurchases.StartTime, RentPurchases.Duration, PriceClasses.SummerPrice, PriceClasses.WinterPrice) AS Price
+INTO RentPurchasesArchive
+FROM RentPurchases
+JOIN Vehicles ON RentPurchases.VehicleId = Vehicles.VehicleId
 JOIN PriceClasses ON PriceClasses.PriceClassId = Vehicles.PriceClassId
-WHERE Rents.EndTime < GETDATE();
-DELETE FROM Rents WHERE EndTime < GETDATE();
+WHERE DATEADD(hh, RentPurchases.Duration*24, RentPurchases.StartTime) < GETDATE();
+DELETE FROM RentPurchases WHERE DATEADD(hh, RentPurchases.Duration*24, RentPurchases.StartTime) < GETDATE();
 
-SELECT DATEPART(mm, TransactionDate) AS Month, COUNT(RentId) AS RentsCount FROM Rents 
-WHERE DATEPART(yy, TransactionDate)=2020
-GROUP BY DATEPART(mm, TransactionDate)
+SELECT MONTH(TransactionDate) AS Month, COUNT(RentId) AS RentPurchasesCount FROM RentPurchases 
+WHERE YEAR(TransactionDate)=2020
+GROUP BY MONTH(TransactionDate);
 
 SELECT *, CASE
 	WHEN LastRegistration <= DATEADD(MONTH,-11,GETDATE()) THEN 'Treba registraciju'
 	ELSE 'Ne treba registraciju'
 	END AS NeedsRegistration
 FROM Vehicles
+WHERE Type = 'Car'
 ORDER BY LastRegistration;
 
-SELECT MIN(Vehicles.Type) AS Type, COUNT(RentId) AS RentAboveAvgCount FROM Rents
-JOIN Vehicles ON Rents.VehicleId = Vehicles.VehicleId
-WHERE DATEDIFF(MI, Rents.StartTime, Rents.EndTime) > (SELECT CAST(AVG(DATEDIFF(MI, Rents.StartTime, Rents.EndTime)) AS float) FROM Rents)
-GROUP BY Vehicles.Type
+SELECT MIN(Vehicles.Type) AS Type, COUNT(RentId) AS RentAboveAvgCount FROM RentPurchases
+JOIN Vehicles ON RentPurchases.VehicleId = Vehicles.VehicleId
+WHERE Duration > (SELECT CAST(AVG(Duration) AS float) FROM RentPurchases)
+GROUP BY Vehicles.Type;
