@@ -1,5 +1,3 @@
-use something drop database rentacar 
-
 CREATE DATABASE RentACar
 --
 USE RentACar
@@ -49,6 +47,7 @@ WHERE (SELECT MAX(RegisterDate) FROM inserted WHERE inserted.VehicleId = Vehicle
 OR Vehicles.LastRegistration IS NULL
 END
 
+
 CREATE TABLE Rents(
 	RentId int IDENTITY(1,1) PRIMARY KEY,
 	VehicleId int FOREIGN KEY REFERENCES Vehicles(VehicleId) NOT NULL,
@@ -81,7 +80,7 @@ INSERT INTO PriceClasses(ClassName, WinterPrice, SummerPrice) VALUES
 ('Combi', 540, 590),
 ('Moped', 110, 210);
 
-INSERT INTO Vehicles(Brand, Model, Type, Color, PriceClass, Mileage) VALUES 
+INSERT INTO Vehicles(Brand, Model, Type, Color, PriceClassId, Mileage) VALUES 
 ('BMW', '840', 'Car', 'Grey', (SELECT PriceClassId FROM PriceClasses WHERE ClassName = 'Coupe'), 2650),
 ('BMW', 'M4', 'Car', 'Green', (SELECT PriceClassId FROM PriceClasses WHERE ClassName = 'Coupe'), 2013),
 ('Toyota', 'Sienna', 'Car', 'Grey', (SELECT PriceClassId FROM PriceClasses WHERE ClassName = 'Minivan'), 683),
@@ -140,15 +139,15 @@ INSERT INTO Registrations(VehicleId, RegisterDate) VALUES
 
 INSERT INTO Rents (VehicleId, EmployeeId, CustomerFirstName, CustomerLastName, CustomerPin, CustomerBirth, CustomerLicense, CustomerCreditCard, TransactionDate, StartTime, EndTime) VALUES
 (5,2,'Richard','Wilson','07649446464','1977-5-4','48066710', '8148489434405333', '2018-4-3', '2018-4-5 18:00', '2018-4-6 17:00'),
-(1,5,'Aaron','Howard','07649446464','1988-1-8','46548109', '3099910042133648', '2018-5-3', '2018-5-7 12:00', '2018-5-10 22:30'),
-(6,7,'Kathy','Ross','07649446464','1954-10-14','99042478', '1926352340788839', '2018-5-6', '2018-5-7 13:00', '2018-5-11 14:00'),
-(5,3,'Fred','Bell','07649446464','1992-9-1','94966688', '8372851956355999', '2018-9-30', '2018-9-30 10:00', '2018-10-2 22:00'),
-(10,4,'Yudy Young','Wilson','07649446464','2001-2-28','54486082', '6827049039478492', '2019-2-27', '2019-2-28 18:00', '2019-3-2 18:00'),
-(17,5,'Timothy','Hughes','07649446464','1995-8-5','80459874', '0465091344030874', '2019-8-1', '2019-8-5 14:00', '2019-8-5 21:00'),
-(18,6,'Jeremy','Smith','07649446464','1985-4-19','20763908', '3957665602652717', '2020-1-1', '2020-1-2 9:00', '2020-1-3 10:00'),
-(5,2,'Benjamin','Johnson','07649446464','1959-12-2','41895417', '1811791766412913', '2020-2-26', '2020-2-27 10:00', '2020-3-1 19:00'),
-(4,3,'Anne','Garcia','07649446464','1991-8-23','36218490', '4124471951492068', '2020-10-28', '2020-10-29 18:00', '2020-10-30 10:00'),
-(3,1,'Tina','Long','07649446464','1989-11-26','66132530', '8785793173508860', '2020-12-21', '2020-12-24 15:00', '2021-1-2 19:00');
+(1,5,'Aaron','Howard','56558445316','1988-1-8','46548109', '3099910042133648', '2018-5-3', '2018-5-7 12:00', '2018-5-10 22:30'),
+(6,7,'Kathy','Ross','06741541992','1954-10-14','99042478', '1926352340788839', '2018-5-6', '2018-5-7 13:00', '2018-5-11 14:00'),
+(5,3,'Fred','Bell','45432684014','1992-9-1','94966688', '8372851956355999', '2018-9-30', '2018-9-30 10:00', '2018-10-2 22:00'),
+(10,4,'Yudy Young','Wilson','46216788481','2001-2-28','54486082', '6827049039478492', '2019-2-27', '2019-2-28 18:00', '2019-3-2 18:00'),
+(17,5,'Timothy','Hughes','48718974899','1995-8-5','80459874', '0465091344030874', '2019-8-1', '2019-8-5 14:00', '2019-8-5 21:00'),
+(18,6,'Jeremy','Smith','38333296479','1985-4-19','20763908', '3957665602652717', '2020-1-1', '2020-1-2 9:00', '2020-1-3 10:00'),
+(5,2,'Benjamin','Johnson','49258947076','1959-12-2','41895417', '1811791766412913', '2020-2-26', '2020-2-27 10:00', '2020-3-1 19:00'),
+(4,3,'Anne','Garcia','35710815006','1991-8-23','36218490', '4124471951492068', '2020-10-28', '2020-10-29 18:00', '2020-10-30 10:00'),
+(3,1,'Tina','Long','81027056810','1989-11-26','66132530', '8785793173508860', '2020-12-21', '2020-12-24 15:00', '2021-1-2 19:00');
 
 SELECT * FROM Vehicles WHERE (DATEDIFF(yy, LastRegistration, GETDATE())>0);
 
@@ -172,8 +171,8 @@ BEGIN
 DECLARE @StartTimeBack datetime = DATEADD(dd, -DATEPART(dayofyear, '2018-2-28'), @StartTime); 
 DECLARE @EndTimeBack datetime = DATEADD(dd, -DATEPART(dayofyear, '2018-2-28'), @EndTime);
 DECLARE @WinterStart datetime2 = DATEADD(dd, -DATEPART(dayofyear, '2018-2-28'), '2018-10-1');
-DECLARE @StartDay int = DATEPART(dayofyear, @StartTime);
-DECLARE @EndDay int = DATEPART(dayofyear, @EndTime);
+DECLARE @StartDay int = DATEPART(dayofyear, @StartTimeBack);
+DECLARE @EndDay int = DATEPART(dayofyear, @EndTimeBack);
 DECLARE @SwitchDay int = DATEPART(dayofyear, @WinterStart);
 DECLARE @WinterDays int = 0;
 DECLARE @SummerDays int = 0;
@@ -203,8 +202,53 @@ IF @Swapped=1
 SET @Price = @SwitchDay * @SummerPrice + (365 - @SwitchDay)*@WinterPrice - @SummerDays * @SummerPrice - @WinterDays*@WinterPrice;
 ELSE
 SET @Price = @WinterDays*@WinterPrice + @SummerDays*@SummerPrice;
-
 RETURN @Price;
 END
 
 GO
+
+SELECT Rents.StartTime, Rents.EndTime, PriceClasses.SummerPrice, PriceClasses.WinterPrice,
+[dbo].GetPrice(Rents.StartTime, Rents.EndTime, PriceClasses.SummerPrice, PriceClasses.WinterPrice) AS Price 
+FROM Rents
+JOIN Vehicles ON Rents.VehicleId = Vehicles.VehicleId
+JOIN PriceClasses ON PriceClasses.PriceClassId = Vehicles.PriceClassId
+WHERE Rents.RentId = 3
+
+SELECT * FROM Rents 
+
+SELECT MIN(CustomerFirstName) AS FirstName, MIN(CustomerLastName) AS LastName, MIN(CustomerBirth) AS Birth,
+MIN(CustomerPin) AS Pin, MIN(CustomerLicense) AS License, MIN(CustomerCreditCard) AS CreditCard  FROM Rents
+GROUP BY CustomerPin;
+
+SELECT MIN(FirstName) AS FirstName, MIN(LastName) AS LastName, MAX(TransactionDate) AS LastTransaction FROM Rents
+JOIN Employees ON Rents.EmployeeId = Employees.EmployeeId
+GROUP BY Rents.EmployeeId;
+
+SELECT MIN(Brand) AS Brand, COUNT(VehicleId) AS NumberOfVehicles FROM Vehicles 
+GROUP BY Brand 
+ORDER BY NumberOfVehicles;
+
+SELECT Rents.*,
+[dbo].GetPrice(Rents.StartTime, Rents.EndTime, PriceClasses.SummerPrice, PriceClasses.WinterPrice) AS Price
+INTO RentsArchive
+FROM Rents
+JOIN Vehicles ON Rents.VehicleId = Vehicles.VehicleId
+JOIN PriceClasses ON PriceClasses.PriceClassId = Vehicles.PriceClassId
+WHERE Rents.EndTime < GETDATE();
+DELETE FROM Rents WHERE EndTime < GETDATE();
+
+SELECT DATEPART(mm, TransactionDate) AS Month, COUNT(RentId) AS RentsCount FROM Rents 
+WHERE DATEPART(yy, TransactionDate)=2020
+GROUP BY DATEPART(mm, TransactionDate)
+
+SELECT *, CASE
+	WHEN LastRegistration <= DATEADD(MONTH,-11,GETDATE()) THEN 'Treba registraciju'
+	ELSE 'Ne treba registraciju'
+	END AS NeedsRegistration
+FROM Vehicles
+ORDER BY LastRegistration;
+
+SELECT MIN(Vehicles.Type) AS Type, COUNT(RentId) AS RentAboveAvgCount FROM Rents
+JOIN Vehicles ON Rents.VehicleId = Vehicles.VehicleId
+WHERE DATEDIFF(MI, Rents.StartTime, Rents.EndTime) > (SELECT CAST(AVG(DATEDIFF(MI, Rents.StartTime, Rents.EndTime)) AS float) FROM Rents)
+GROUP BY Vehicles.Type
