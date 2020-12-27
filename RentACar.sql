@@ -203,7 +203,7 @@ INSERT INTO RentPurchases (VehicleId, EmployeeId, CustomerFirstName, CustomerLas
 (18,7,'Kathy','Ross','06741541992','1954-10-14','99042478', '1926352340788839', '2021-2-25', '2021-2-26 11:00', 16),
 (20,3,'Tina','Long','81027056810','1989-11-26','66132530', '8785793173508860', '2021-3-21', '2021-3-24 15:00', 4);
 
-SELECT * FROM Vehicles WHERE (DATEDIFF(yy, LastRegistration, GETDATE()) > 0);
+SELECT * FROM Vehicles WHERE DATEADD(YEAR, -1, GETDATE()) >= LastRegistration;
 
 SELECT * FROM Vehicles WHERE LastRegistration BETWEEN DATEADD(YEAR,-1, GETDATE()) AND DATEADD(MONTH,-11,GETDATE());
 
